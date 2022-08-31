@@ -17,9 +17,8 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
-           // $table->Integer('phone')->unique();
-            $table->string('mobile_no')->nullable();//->after('username');
-            $table->string('type')->unique();
+            //$table->Integer('phone')->unique();
+            $table->string('type')->nullable();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->rememberToken();
@@ -35,7 +34,7 @@ return new class extends Migration
     public function down()
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn('mobile_no');
+            //$table->dropColumn('mobile_no');
         });
     }
 };
