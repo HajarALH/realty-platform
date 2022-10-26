@@ -10,6 +10,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
+use Carbon\Carbon;
+
 
 class RegisteredUserController extends Controller
 {
@@ -20,6 +22,7 @@ class RegisteredUserController extends Controller
      */
     public function create()
     {
+
         return view('auth.register');
     }
 
@@ -33,18 +36,20 @@ class RegisteredUserController extends Controller
      */
     public function store(Request $request)
     {
+       // dd($request);
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-            //'mobile_no' => ['required', 'numeric', 'max:8'],
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            //'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+            'mobile_no' => ['required', 'string', 'max:15', 'unique:users'],
+
+           // 'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
         $user = User::create([
             'name' => $request->name,
-            //'mobile_no' => $data['mobile_no'],
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
+            'mobile_no' =>  $request->mobile_no,//Hash::make($request->mobile_no),
+            //'email' => $request->email,
+            //'password' => Hash::make($request->password),
         ]);
 
         event(new Registered($user));
@@ -52,5 +57,39 @@ class RegisteredUserController extends Controller
         Auth::login($user);
 
         return redirect(RouteServiceProvider::HOME);
+    }
+
+    public function loginWithOtp(Request $request)
+    {
+        #Validation
+        $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'otp' => 'required '
+        ]);
+
+        #Validation Logic
+        $verificationCode   = User::where('user_id', $request->user_id)->where('otp', $request->otp)->first();
+
+        $now = Carbon::now();
+        if (!$verificationCode) {
+            return redirect()->back()->with('error', 'Your OTP is not correct');
+        }elseif($verificationCode && $now->isAfter($verificationCode->expire_at)){
+            return redirect()->route('otp.login')->with('error', 'Your OTP has been expired');
+        }
+
+        $user = User::whereId($request->user_id)->first();
+
+        if($user){
+            // Expire The OTP
+            $verificationCode->update([
+                'expire_at' => Carbon::now()
+            ]);
+
+            Auth::login($user);
+
+            return redirect('/home');
+        }
+
+        return redirect()->route('otp.login')->with('error', 'Your Otp is not correct');
     }
 }
